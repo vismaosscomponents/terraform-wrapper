@@ -22,27 +22,33 @@ contains() {
 }
 
 function setup_workspace {
+    cd $DIR/stacks/$TERRAFORM_STACK
+    CURRENT_WORKSPACE=`terraform workspace show`
+    if [ $CURRENT_WORKSPACE != $TERRAFORM_WORKSPACE ]
+    then
+        init_workspace
+    fi
+}
+
+function init_workspace {
     if [ -z $TF_USE_CURRENT_PROFILE ]
     then
         export AWS_PROFILE=$TERRAFORM_WORKSPACE
     fi
     cd $DIR/stacks/$TERRAFORM_STACK
-    CURRENT_WORKSPACE=`terraform workspace show`
-    if [ $CURRENT_WORKSPACE != $TERRAFORM_WORKSPACE ]
+
+    rm -rf .terraform/environment .terraform/terraform.tfstate
+    BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
+    STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
+    terraform init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
+    set +e
+    terraform workspace select $TERRAFORM_WORKSPACE
+    if [ $? != 0 ]
     then
-        rm -rf .terraform/environment .terraform/terraform.tfstate
-        BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
-        STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
-        terraform init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
-        set +e
+        terraform workspace new $TERRAFORM_WORKSPACE
         terraform workspace select $TERRAFORM_WORKSPACE
-        if [ $? != 0 ]
-        then
-            terraform workspace new $TERRAFORM_WORKSPACE
-            terraform workspace select $TERRAFORM_WORKSPACE
-        fi
-        set -e
     fi
+    set -e
 }
 
 DIR=
@@ -297,6 +303,10 @@ case $TF_COMMAND in
         ;;
     get|help|state|graph|fmt|show|taint|untaint|version|output)
         # Should work without any change
+        ;;
+    re-init)
+        init_workspace
+        exit $?
         ;;
     *)
         (>&2 echo -e "${RED}Command $TF_COMMAND is unsupported! Use terraform $TF_COMMAND at your own risks...${NC}")
