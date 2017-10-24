@@ -228,14 +228,41 @@ shift
 
 case $TF_COMMAND in
     deps)
+        ADD_STATUS=
+        if [ "x$1" = "xstatus" ]
+        then
+            ADD_STATUS=1
+        fi
         # check dependencies between modules
         echo -e "digraph {
         compound = \"true\"
         newrank = \"true\"
+        node[style=filled]
 "
         for stack in $VALID_STACKS
         do
-            echo -e \"$stack\"
+            ATTRIBUTES=
+            if [ "$ADD_STATUS" = "1" ]
+            then
+                COLOR=red
+                set +e
+                result=$(export TERRAFORM_STACK=$stack; $0 plan -detailed-exitcode 2> /dev/null)
+                EXIT_CODE=$?
+                set -e
+                if [[ $EXIT_CODE == 2 ]]
+                then
+                    COLOR=yellow
+                elif [[ $EXIT_CODE == 0 ]]
+                then
+                    COLOR=green
+                fi
+                if ! [ -n $ATTRIBUTES ]
+                then
+                    ATTRIBUTES=${ATTRIBUTES},
+                fi
+                ATTRIBUTES=${ATTRIBUTES}fillcolor=${COLOR}
+            fi
+            echo -e \"$stack\"[$ATTRIBUTES]
         done
         grep \\\"terraform_remote_state $DIR/stacks/*/*.tf | sed -e 's/.*\/stacks\///; s/\/.*terraform_remote_state//; s/["{]//g; s/ /" -> "/; s/\s\+$/"/; s/^/"/'
 

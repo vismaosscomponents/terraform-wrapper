@@ -85,6 +85,17 @@ Do some stuff:
 
 ``apply`` always use ``-auto-approve=false``. In an automation scenario, use ``./tf.sh apply -auto-approve=true``
 
+# Dependency graph
+
+``tf deps`` will generate a graph in the dot language to show dependencies between stacks.
+
+``tf deps status`` will add color to each node based on the status return by ``plan``:
+* green: up-to-date
+* yellow: changes pending
+* red: error
+
+See examples: [dependency graph 1](deps-status-1.png), [dependency graph 2](deps-status-2.png)
+
 # Unsupported terraform functions
 
     console
@@ -97,7 +108,6 @@ Do some stuff:
 # TODO
 
 1. Show current workspace and stack in bash prompt (in progress, see tf-prompt.sh)
-1. Generate a graph of the stacks dependencies, relying on usage of ``terraform_remote_state`` in each stack
 1. Bash autocompletion
 1. Initialize a project.
 1. Use symlinks if supported instead of copying ``global.tf`` as ``global.symlink.tf``
