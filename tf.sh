@@ -321,6 +321,7 @@ case $TF_COMMAND in
                 exit $?
                 ;;
         esac
+        exit 1;
         ;;
     apply)
         export TF_CLI_ARGS="-var-file=../../envvars/${TERRAFORM_WORKSPACE}.tfvars -var-file=../../global.tfvars -input=false -auto-approve=false"
