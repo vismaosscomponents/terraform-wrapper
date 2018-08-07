@@ -51,6 +51,14 @@ function init_workspace {
     set -e
 }
 
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  TFDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$TFDIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+TFDIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
 DIR=
 
 search_up() {
@@ -227,6 +235,31 @@ TF_COMMAND=$1
 shift
 
 case $TF_COMMAND in
+    login)
+        set +e
+        EXIT_CODE=$(winpty --version)
+        EXIT_CODE=$?
+        set -e
+        PTY=
+        if [[ $EXIT_CODE == 0 ]]
+        then
+            PTY="winpty"
+        fi
+
+        PYTHON=python
+        set +e
+        EXIT_CODE=$(python3 --version 2>&1 > /dev/null)
+        EXIT_CODE=$?
+        set -e
+        if [[ $EXIT_CODE == 0 ]]
+        then
+            PYTHON="python3"
+        fi
+
+        $PTY $PYTHON $TFDIR/pum-aws.py --profile $AWS_PROFILE --account ${accounts[$TERRAFORM_WORKSPACE]}
+
+        exit 0;
+        ;;
     deps)
         ADD_STATUS=
         if [ "x$1" = "xstatus" ]
