@@ -10,6 +10,18 @@ Copy ``tf-prompt.sh`` somewhere, source it from your bash profile.
 
 The ``tf_prompt`` function returns ``(<workspace>/<stack>)``. Call `\$(tf_prompt)` somewhere in your prompt variables.
 
+## pum-aws.py
+
+This script is used to login with Privileged User Management.
+
+Copy ``pum-aws.py`` in the same location as tf.sh.
+
+Pre-requisites:
+* python 3
+* run ``pip install -r requirements.txt``
+
+### 
+
 # Directory structure:
 
 ````
@@ -70,6 +82,10 @@ Select a workspace:
 
     tf workspace acc
     
+Login with PUM:
+
+    tf login
+
 Do some stuff:
 
     tf plan

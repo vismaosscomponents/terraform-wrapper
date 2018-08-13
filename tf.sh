@@ -21,6 +21,33 @@ contains() {
     fi
 }
 
+# Login with Privileged User Management
+# 1st parameter: target AWS profile
+# 2nd parameter: target AWS account id
+function login() {
+        set +e
+        EXIT_CODE=$(winpty --version 2>&1 > /dev/null)
+        EXIT_CODE=$?
+        set -e
+        PTY=
+        if [[ $EXIT_CODE == 0 ]]
+        then
+            PTY="winpty"
+        fi
+
+        PYTHON=python
+        set +e
+        EXIT_CODE=$(python3 --version 2>&1 > /dev/null)
+        EXIT_CODE=$?
+        set -e
+        if [[ $EXIT_CODE == 0 ]]
+        then
+            PYTHON="python3"
+        fi
+
+        $PTY $PYTHON $TFDIR/pum-aws.py --profile $1 --account $2
+}
+
 function setup_workspace {
     cd $DIR/stacks/$TERRAFORM_STACK
     CURRENT_WORKSPACE=`terraform workspace show`
@@ -180,6 +207,23 @@ cd $DIR/stacks/$TERRAFORM_STACK
 cp $DIR/global.tf global.symlink.tf
 cp $DIR/backend.tf backend.symlink.tf
 
+if [ "$1" = "login" ]
+then
+    if [ "x$TERRAFORM_WORKSPACE" = "x" ]
+    then
+        TERRAFORM_WORKSPACE=`cat $WORKSPACE_FILE`
+    fi
+    if [ ${accounts[$TERRAFORM_WORKSPACE]+abc} ]
+    then
+        echo -e "${GREEN}Current workspace: $TERRAFORM_WORKSPACE${NC}"
+    else
+        (>&2 echo -e "${RED}No current workspace. Usage: $0 workspace [${!accounts[@]}].${NC}")
+        exit 1
+    fi
+    login $TERRAFORM_WORKSPACE ${accounts[$TERRAFORM_WORKSPACE]}
+    exit 0;
+fi
+
 ## Select (and setup) workspace
 if [ "x$TERRAFORM_WORKSPACE" = "x" ] && [ "$1" = "workspace" ]
 then
@@ -235,31 +279,6 @@ TF_COMMAND=$1
 shift
 
 case $TF_COMMAND in
-    login)
-        set +e
-        EXIT_CODE=$(winpty --version)
-        EXIT_CODE=$?
-        set -e
-        PTY=
-        if [[ $EXIT_CODE == 0 ]]
-        then
-            PTY="winpty"
-        fi
-
-        PYTHON=python
-        set +e
-        EXIT_CODE=$(python3 --version 2>&1 > /dev/null)
-        EXIT_CODE=$?
-        set -e
-        if [[ $EXIT_CODE == 0 ]]
-        then
-            PYTHON="python3"
-        fi
-
-        $PTY $PYTHON $TFDIR/pum-aws.py --profile $AWS_PROFILE --account ${accounts[$TERRAFORM_WORKSPACE]}
-
-        exit 0;
-        ;;
     deps)
         ADD_STATUS=
         if [ "x$1" = "xstatus" ]
