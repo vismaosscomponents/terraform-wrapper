@@ -50,7 +50,7 @@ function login() {
 
 function setup_workspace {
     cd $DIR/stacks/$TERRAFORM_STACK
-    CURRENT_WORKSPACE=`terraform workspace show`
+    CURRENT_WORKSPACE=`terraform-0.11 workspace show`
     if [ $CURRENT_WORKSPACE != $TERRAFORM_WORKSPACE ]
     then
         init_workspace
@@ -394,5 +394,19 @@ case $TF_COMMAND in
         ;;
 esac
 
-terraform $TF_COMMAND "$@"
+TF_VERSION_FILE=$DIR/stacks/$TERRAFORM_STACK/terraform.version
+TF_VERSION="0.11"
+if [ -f "$TF_VERSION_FILE" ]; then
+    TF_VERSION=`cat $TF_VERSION_FILE`
+    if [ $TF_VERSION = "0.12" ]; then
+        echo "Working with terraform v0.12 ..."
+        terraform-0.12 $TF_COMMAND "$@"
+    else
+        echo "Version $TF_VERSION is not supported!"
+    fi
+else
+    echo "Working with terraform v0.11 ..."
+    terraform-0.11 $TF_COMMAND "$@"
+fi
+
 exit $?
