@@ -67,13 +67,13 @@ function init_workspace {
     rm -rf .terraform/environment .terraform/terraform.tfstate
     BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
     STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
-    terraform init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
+    terraform-0.11 init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
     set +e
-    terraform workspace select $TERRAFORM_WORKSPACE
+    terraform-0.11 workspace select $TERRAFORM_WORKSPACE
     if [ $? != 0 ]
     then
-        terraform workspace new $TERRAFORM_WORKSPACE
-        terraform workspace select $TERRAFORM_WORKSPACE
+        terraform-0.11 workspace new $TERRAFORM_WORKSPACE
+        terraform-0.11 workspace select $TERRAFORM_WORKSPACE
     fi
     set -e
 }
