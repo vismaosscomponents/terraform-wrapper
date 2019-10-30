@@ -50,7 +50,7 @@ function login() {
 
 function setup_workspace {
     cd $DIR/stacks/$TERRAFORM_STACK
-    CURRENT_WORKSPACE=`terraform-0.11 workspace show`
+    CURRENT_WORKSPACE=`$TERRAFORM_BIN workspace show`
     if [ $CURRENT_WORKSPACE != $TERRAFORM_WORKSPACE ]
     then
         init_workspace
@@ -67,13 +67,13 @@ function init_workspace {
     rm -rf .terraform/environment .terraform/terraform.tfstate
     BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
     STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
-    terraform-0.11 init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
+    $TERRAFORM_BIN init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
     set +e
-    terraform-0.11 workspace select $TERRAFORM_WORKSPACE
+    $TERRAFORM_BIN workspace select $TERRAFORM_WORKSPACE
     if [ $? != 0 ]
     then
-        terraform-0.11 workspace new $TERRAFORM_WORKSPACE
-        terraform-0.11 workspace select $TERRAFORM_WORKSPACE
+        $TERRAFORM_BIN workspace new $TERRAFORM_WORKSPACE
+        $TERRAFORM_BIN workspace select $TERRAFORM_WORKSPACE
     fi
     set -e
 }
@@ -200,6 +200,23 @@ then
 else
     (>&2 echo -e "${RED}No current stack. Usage: $0 stack [$VALID_STACKS].${NC}")
     exit 1
+fi
+
+# Define which terraform version to use
+TF_VERSION_FILE=$DIR/stacks/$TERRAFORM_STACK/terraform.version
+echo $TF_VERSION_FILE
+TF_VERSION="0.11"
+if [ -f "$TF_VERSION_FILE" ]; then
+    TF_VERSION=`cat $TF_VERSION_FILE`
+    if [ $TF_VERSION = "0.12" ]; then
+        echo "Working with terraform v0.12 ..."
+        TERRAFORM_BIN=terraform-0.12
+    else
+        echo "Version $TF_VERSION is not supported!"
+    fi
+else
+    echo "Working with terraform v0.11 ..."
+    TERRAFORM_BIN=terraform-0.11
 fi
 
 # The stack exists, switch to it
@@ -394,19 +411,5 @@ case $TF_COMMAND in
         ;;
 esac
 
-TF_VERSION_FILE=$DIR/stacks/$TERRAFORM_STACK/terraform.version
-TF_VERSION="0.11"
-if [ -f "$TF_VERSION_FILE" ]; then
-    TF_VERSION=`cat $TF_VERSION_FILE`
-    if [ $TF_VERSION = "0.12" ]; then
-        echo "Working with terraform v0.12 ..."
-        terraform-0.12 $TF_COMMAND "$@"
-    else
-        echo "Version $TF_VERSION is not supported!"
-    fi
-else
-    echo "Working with terraform v0.11 ..."
-    terraform-0.11 $TF_COMMAND "$@"
-fi
-
+$TERRAFORM_BIN $TF_COMMAND "$@"
 exit $?
