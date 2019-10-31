@@ -204,19 +204,17 @@ fi
 
 # Define which terraform version to use
 TF_VERSION_FILE=$DIR/stacks/$TERRAFORM_STACK/terraform.version
-echo $TF_VERSION_FILE
-TF_VERSION="0.11"
+TERRAFORM_BIN="terraform-0.11"
+
 if [ -f "$TF_VERSION_FILE" ]; then
     TF_VERSION=`cat $TF_VERSION_FILE`
     if [ $TF_VERSION = "0.12" ]; then
         echo "Working with terraform v0.12 ..."
-        TERRAFORM_BIN=terraform-0.12
+        TERRAFORM_BIN="terraform-0.12"
     else
-        echo "Version $TF_VERSION is not supported!"
+        echo "The used version from terraform.version file is wrong or missing!"
+        exit 1
     fi
-else
-    echo "Working with terraform v0.11 ..."
-    TERRAFORM_BIN=terraform-0.11
 fi
 
 # The stack exists, switch to it
