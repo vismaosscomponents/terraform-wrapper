@@ -158,7 +158,7 @@ then
     exit 1
 fi
 
-VALID_STACKS=`find $DIR/stacks -maxdepth 1 -mindepth 1 -type d -printf "%f "`
+VALID_STACKS=`find $DIR/stacks -maxdepth 1 -mindepth 1 -type d -printf "%f " | tr ' ' '\n' | sort | tr '\n' ' '`
 
 ## Select stack
 if [ "x$TERRAFORM_STACK" = "x" ] && [ "$1" = "stack" ]
@@ -295,7 +295,7 @@ shift
 
 case $TF_COMMAND in
     deps)
-        ADD_STATUS=
+        ADD_STATUS=d
         if [ "x$1" = "xstatus" ]
         then
             ADD_STATUS=1
@@ -323,7 +323,7 @@ case $TF_COMMAND in
                 then
                     COLOR=green
                 fi
-                if ! [ -n $ATTRIBUTES ]
+                if [[ -n "$ATTRIBUTES" ]]
                 then
                     ATTRIBUTES=${ATTRIBUTES},
                 fi
