@@ -299,6 +299,11 @@ then
     export AWS_PROFILE=$TERRAFORM_WORKSPACE
 fi
 
+# Local configuration file, for some api keys
+if [ -f "$DIR/terraform.tfvars" ]; then
+	EXTRA_VAR_FILE=-var-file=../../terraform.tfvars
+fi
+
 TF_COMMAND=$1
 shift
 
@@ -400,10 +405,10 @@ case $TF_COMMAND in
         exit 1;
         ;;
     apply)
-        export TF_CLI_ARGS="-var-file=../../envvars/${TERRAFORM_WORKSPACE}.tfvars -var-file=../../global.tfvars -input=false -auto-approve=false"
+        export TF_CLI_ARGS="-var-file=../../envvars/${TERRAFORM_WORKSPACE}.tfvars -var-file=../../global.tfvars $EXTRA_VAR_FILE -input=false -auto-approve=false"
         ;;
     plan|validate|destroy|import|refresh)
-        export TF_CLI_ARGS="-var-file=../../envvars/${TERRAFORM_WORKSPACE}.tfvars -var-file=../../global.tfvars -input=false"
+        export TF_CLI_ARGS="-var-file=../../envvars/${TERRAFORM_WORKSPACE}.tfvars -var-file=../../global.tfvars $EXTRA_VAR_FILE -input=false"
         ;;
     get|help|state|graph|fmt|show|taint|untaint|version|output)
         # Should work without any change

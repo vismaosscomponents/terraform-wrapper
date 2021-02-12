@@ -122,6 +122,11 @@ You can use version 0.12 or 0.14 in this way:
 * create a file named ``terraform.version`` on the root of your repo, or in a stack to use that version for a single stack
 * file should contain ``0.12`` or ``0.14`` to select the version
 
+# Extra credentials
+
+If you need to pass variables containing credentials, you can add a file named ``terraform.tfvars`` at the root of your repository.
+This file should be excluded from source control. It will be loaded during ``plan/apply/validate/destroy/import/refresh`` commands.
+
 # Unsupported terraform functions
 
     console
