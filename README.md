@@ -2,6 +2,9 @@ Inspired by https://stackoverflow.com/a/45968410
 
 # Installing
 
+## Terraform
+Install terraform, make sure ``terraform-0.11`` is on the path
+
 ## Main script
 Copy ``tf.sh somewhere``, ``/usr/local/bin/tf`` for instance.
 
@@ -111,6 +114,13 @@ Do some stuff:
 * red: error
 
 See examples: [dependency graph 1](deps-status-1.png), [dependency graph 2](deps-status-2.png)
+
+# Using different versions of terraform
+
+The wrapper expects an executable named ``terraform-0.11`` to be on the path.
+You can use version 0.12 or 0.14 in this way:
+* create a file named ``terraform.version`` on the root of your repo, or in a stack to use that version for a single stack
+* file should contain ``0.12`` or ``0.14`` to select the version
 
 # Unsupported terraform functions
 

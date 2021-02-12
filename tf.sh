@@ -204,11 +204,20 @@ fi
 
 # Define which terraform version to use
 TF_VERSION_FILE=$DIR/stacks/$TERRAFORM_STACK/terraform.version
+TF_VERSION_FILE_ROOT=$DIR/terraform.version
 TERRAFORM_BIN="terraform-0.11"
 
 if [ -f "$TF_VERSION_FILE" ]; then
     TF_VERSION=`cat $TF_VERSION_FILE`
-    if [ $TF_VERSION = "0.12" ]; then
+elif [ -f "$TF_VERSION_FILE_ROOT" ]; then
+    TF_VERSION=`cat $TF_VERSION_FILE_ROOT`
+fi
+
+if [ -n "$TF_VERSION" ]; then
+    if [ $TF_VERSION = "0.14" ]; then
+        echo "Working with terraform v0.14 ..."
+        TERRAFORM_BIN="terraform-0.14"
+    elif [ $TF_VERSION = "0.12" ]; then
         echo "Working with terraform v0.12 ..."
         TERRAFORM_BIN="terraform-0.12"
     else
