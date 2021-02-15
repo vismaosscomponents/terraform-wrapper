@@ -67,7 +67,10 @@ function init_workspace {
     rm -rf .terraform/environment .terraform/terraform.tfstate
     BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
     STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
-    $TERRAFORM_BIN init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
+    if [ $TERRAFORM_BIN = "terraform-0.14" ]; then
+        EXTRA=-upgrade
+    fi
+    $TERRAFORM_BIN init -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=stacks/$TERRAFORM_STACK" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}" $EXTRA
     set +e
     $TERRAFORM_BIN workspace select $TERRAFORM_WORKSPACE
     if [ $? != 0 ]
