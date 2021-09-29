@@ -229,6 +229,9 @@ if [ -n "$TF_VERSION" ]; then
     elif [ $TF_VERSION = "0.15" ]; then
         echo "Working with terraform v0.15 ..."
         TERRAFORM_BIN="terraform-0.15"
+    elif [ $TF_VERSION = "1.0" ]; then
+        echo "Working with terraform v1.0.7 ..."
+        TERRAFORM_BIN="terraform-1.0"
     else
         echo "The used version from terraform.version file is wrong or missing!"
         exit 1
