@@ -64,7 +64,7 @@ function init_workspace {
     fi
     cd $DIR/stacks/$TERRAFORM_STACK
 
-    rm -rf .terraform/environment .terraform/terraform.tfstate
+    rm -rf .terraform/environment .terraform/terraform.tfstate terraform.tfstate.d .terraform.lock.hcl
     BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
     STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
     if [ $TERRAFORM_BIN = "terraform-0.14" ]; then
