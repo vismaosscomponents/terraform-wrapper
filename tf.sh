@@ -57,6 +57,26 @@ function setup_workspace {
     fi
 }
 
+function backend {
+    if [ -z $TF_USE_CURRENT_PROFILE ]
+    then
+        export AWS_PROFILE=$TERRAFORM_WORKSPACE
+    fi
+
+    echo "Using directory 'state-management'"
+    cd $DIR/state-management
+    cp $DIR/backend.tf backend.symlink.tf
+
+    BACKEND_BUCKET="terraform-state-${accounts[${TERRAFORM_WORKSPACE}]}"
+    STATE_KEY_ID=$(aws kms list-aliases --query "Aliases[?AliasName==\`alias/terraform-state\`].{keyid:TargetKeyId}" --output text)
+    if [ "$1" == "init" ]; then
+        rm -rf .terraform terraform.tfstate.d .terraform.lock.hcl
+        $TERRAFORM_BIN $1 ${@:2} -backend-config="bucket=${BACKEND_BUCKET}" -backend-config="key=backend/terraform.tfstate" -backend-config="encrypt=true" -backend-config="kms_key_id=${STATE_KEY_ID}"
+    else
+        $TERRAFORM_BIN $@
+    fi
+}
+
 function init_workspace {
     if [ -z $TF_USE_CURRENT_PROFILE ]
     then
@@ -427,6 +447,10 @@ case $TF_COMMAND in
         ;;
     re-init)
         init_workspace
+        exit $?
+        ;;
+    backend)
+        backend $@
         exit $?
         ;;
     *)
