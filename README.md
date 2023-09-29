@@ -41,6 +41,8 @@ stacks/
     <stack 2>
         backend.tf
     <...>
+state-management/           The directory for the backend of your workspaces and stacks
+    <...>
 accounts                    Mapping between workspace names and AWS accounts
 backend.tf                  Global terraform backend file. Will be copied or symlinked in each stack
 global.tf                   Global terraform file. Will be copied or symlinked in each stack
@@ -103,6 +105,24 @@ Do some stuff:
 * ``validate`` 
 
 ``apply`` always use ``-auto-approve=false``. In an automation scenario, use ``./tf.sh apply -auto-approve=true``
+
+# Managing your backend
+
+Command usage `tf.sh backend <subcommand> <args>`
+
+## Initzialization 
+How to create the backend:
+* run `terraform init && terraform apply` locally
+* run `tf.sh backend init -migrate-state`
+ * if you don't have the local state anymore you'll have to import the resources manually
+ * check [here](https://developer.hashicorp.com/terraform/cli/import) for more information
+* any plan applies needs to use the following syntax `tf.sh backend <command>` (e.g. plan/applu/etc..)
+
+## Subsequent modifications
+Switching between workspaces:
+* run `tf.sh workspace <workspace>`
+* run `tf.sh backend init`
+
 
 # Dependency graph
 
