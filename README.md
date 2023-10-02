@@ -163,3 +163,7 @@ This file should be excluded from source control. It will be loaded during ``pla
 1. Initialize a project.
 1. Use symlinks if supported instead of copying ``global.tf`` as ``global.symlink.tf``
 1. ? Find current stack from current directory, to be able to use ``cd stacks/xxx`` instead of ``tf stack xxx``
+
+# Limitations
+
+* the workspace is tied with the AWS account. Can't have multiple workspaces under the same AWS account

@@ -17,6 +17,55 @@ contains() {
     fi
 }
 
+context_stack() {
+    if [ ! -e $STACK_FILE ]; then
+        echo -e "${RED}Stack file doesn't exist!${NC}"
+        return 1
+    fi
+
+    export TERRAFORM_STACK=$(cat $STACK_FILE)
+
+    if [ -z "$TERRAFORM_STACK" ]; then
+        echo -e "${RED}Missing value from stack file!${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
+context_workspace() {
+    if [ ! -e $WORKSPACE_FILE ]; then
+        echo -e "${RED}Workspace file doesn't exist!${NC}"
+        return 1
+    fi
+
+    export TERRAFORM_WORKSPACE=$(cat $WORKSPACE_FILE)
+    export AWS_PROFILE=$TERRAFORM_WORKSPACE
+    if [ -z "$TERRAFORM_WORKSPACE" ]; then
+        echo -e "${RED}Missing value from workspace file!${NC}"
+        return 1
+    fi
+
+    return 0
+}
+
+context() {
+    context_stack
+    if [ $? -eq 1 ]; then
+        exit 1
+    fi
+    context_workspace
+    if [ $? -eq 1 ]; then
+        exit 1
+    fi
+
+    if [ $1 ] || [ "$TF_WRAPPER_DEBUG" == "true" ]
+    then
+        echo -e "Using stack:     ${GREEN}${TERRAFORM_STACK}${NC}"
+        echo -e "Using workspace: ${GREEN}${TERRAFORM_WORKSPACE}${NC}"
+    fi
+}
+
 install_required() {
     if [ "$TF_WRAPPER_DEBUG" == "true" ]; then
         echo -e "${YELLOW}Running install_required${NC}"
@@ -55,7 +104,9 @@ terraform_version_select() {
     if [ "$TF_WRAPPER_DEBUG" == "true" ]; then
         echo -e "${YELLOW}Running terraform_version_select${NC}"
     fi
+
     # Define which terraform version to use
+    context_stack
     TF_VERSION_FILE=$DIR/stacks/$TERRAFORM_STACK/terraform.version
     TF_VERSION_FILE_ROOT=$DIR/terraform.version
 
@@ -99,6 +150,7 @@ read_accounts() {
 
 bootstrap() {
     if [ "$TF_WRAPPER_DEBUG" == "true" ]; then
+        echo -e "Running in ${YELLOW}debug${NC} mode"
         echo -e "${YELLOW}Running bootstrap${NC}"
     fi
     install_required
@@ -118,25 +170,6 @@ bootstrap() {
     terraform_version_select
 }
 
-context() {
-    if [ ! -e $WORKSPACE_FILE ] || [ ! -e $STACK_FILE ]; then
-        echo -e "${RED}Workspace or stack file doesn't exist!${NC}"
-        exit 1
-    fi
-
-    export TERRAFORM_WORKSPACE=$(cat $WORKSPACE_FILE)
-    export TERRAFORM_STACK=$(cat $STACK_FILE)
-    export AWS_PROFILE=$TERRAFORM_WORKSPACE
-
-    if [ -z "$TERRAFORM_WORKSPACE" ] || [ -z "$TERRAFORM_STACK" ]; then
-        echo -e "${RED}Missing value from workspace or stack file!${NC}"
-        exit 1
-    fi
-
-    echo -e "Current stack:     ${GREEN}$TERRAFORM_STACK${NC}"
-    echo -e "Current workspace: ${GREEN}$TERRAFORM_WORKSPACE${NC}"
-}
-
 ## workspace
 
 workspace() {
@@ -147,7 +180,8 @@ workspace() {
             workspace_select "$@"
             ;;
         list)
-            echo -e "Currently using workspace: [${GREEN}$(cat $WORKSPACE_FILE)${NC}]"
+            context_workspace
+            echo -e "Currently using workspace: [${GREEN}$TERRAFORM_WORKSPACE${NC}]"
             echo -e "Available workspaces are:  [${YELLOW}${!accounts[@]}${NC}]" 
             ;;
         help)
@@ -167,18 +201,11 @@ ${YELLOW}To initialize an already selected workspace use '$TF_BIN_NAME init'${NC
     return $?
 }
 
-workspace_setup() {
-    echo $TERRAFORM_STACK
-    CURRENT_WORKSPACE=`terraform workspace show`
-    if [ $CURRENT_WORKSPACE != $TERRAFORM_WORKSPACE ]
-    then
-        echo -e "${GREEN}Workspace switched to $TERRAFORM_WORKSPACE${NC}"
-        workspace_init
-    fi
-}
-
 workspace_init() {
-    stack_verify
+    if (! stack_verify) then
+        echo -e "${RED}An error occured while verifying the stack${NC}"
+        return 1
+    fi
     
     if [ -z $TF_USE_CURRENT_PROFILE ]
     then
@@ -199,30 +226,30 @@ workspace_init() {
         terraform -chdir=$STACK_DIR workspace select $TERRAFORM_WORKSPACE
     fi
     set -e
+    return $?
 }
 
 workspace_verify() {
+    workspace_valid() {
+     if [ ${accounts[$TERRAFORM_WORKSPACE]+abc} ]; then
+        echo -e "Current workspace: ${GREEN}$TERRAFORM_WORKSPACE${NC}"
+        workspace_init
+    else
+        (>&2 echo -e "${RED}Invalid workspace '$TERRAFORM_WORKSPACE'.\n$TF_BIN_NAME workspace select <workspace>\nValid workspaces: [${!accounts[@]}].${NC}")
+        return 1
+    fi   
+    }
+
+    # Keeping this if for automation purposes via environment variables
     if [ -n "$TERRAFORM_WORKSPACE" ]; then
-        if [ ${accounts[$TERRAFORM_WORKSPACE]+abc} ]; then
-            echo -e "${GREEN}Current workspace: $TERRAFORM_WORKSPACE (from env)${NC}"
-            workspace_setup
-        else
-            (>&2 echo -e "${RED}Invalid workspace '$TERRAFORM_WORKSPACE'. Valid workspaces: [${!accounts[@]}].${NC}")
-            return 1
-        fi
-    elif [ -e $WORKSPACE_FILE ]; then
-        WORKSPACE=`cat $WORKSPACE_FILE`
-        if [ ${accounts[$WORKSPACE]+abc} ]; then
-            export TERRAFORM_WORKSPACE=$WORKSPACE
-            echo -e "${GREEN}Current workspace: $TERRAFORM_WORKSPACE${NC}"
-            workspace_init
-        else
-            (>&2 echo -e "${RED}No current workspace. Usage: $TF_BIN_NAME workspace [${!accounts[@]}].${NC}")
+        if (! workspace_valid "env") then
             return 1
         fi
     else
-        (>&2 echo -e "${RED}No current workspace. Usage: $$TF_BIN_NAME workspace [${!accounts[@]}].${NC}")
-        return 1
+        context_workspace
+        if (! workspace_valid ".tf/.workspace") then
+            return 1
+        fi
     fi
     return 0
 }
@@ -230,10 +257,15 @@ workspace_verify() {
 workspace_select() {
     if [ -n "$1" ] && [ ${accounts[$1]+abc} ]
     then
-        export TERRAFORM_WORKSPACE=$1
-        echo $TERRAFORM_WORKSPACE > $WORKSPACE_FILE
-        echo -e "${YELLOW}Switching workspace to $TERRAFORM_WORKSPACE${NC}"
-        workspace_setup
+        context_workspace
+        if [ "$1" != "$TERRAFORM_WORKSPACE" ]; then
+            export TERRAFORM_WORKSPACE=$1
+            echo $TERRAFORM_WORKSPACE > $WORKSPACE_FILE
+            echo -e "${YELLOW}Switching workspace to $TERRAFORM_WORKSPACE${NC}"
+            workspace_verify
+        else
+            echo -e "Already on workspace ${GREEN}$TERRAFORM_WORKSPACE${NC}"
+        fi
     else
         (>&2 echo -e "${RED}workspace '$1' is invalid. Usage: $TF_BIN_NAME workspace accounts[@]}].${NC}")
         return 1
@@ -251,7 +283,8 @@ stack() {
             stack_select "$@"
             ;;
         list)
-            echo -e "Currently using stack: [${GREEN}$(cat $STACK_FILE)${NC}]"
+            context_stack
+            echo -e "Currently using stack: [${GREEN}$TERRAFORM_STACK${NC}]"
             echo -e "Available stacks are:  [${YELLOW}$VALID_STACKS${NC}]" 
             ;;
         help)
@@ -270,46 +303,47 @@ help        Prints available stack subcommands"
 }
 
 stack_verify() {
-    if [ -n "$TERRAFORM_STACK" ]; then
+    stack_valid(){
         if contains "$VALID_STACKS" $TERRAFORM_STACK
         then
-            echo -e "${GREEN}Current stack: $TERRAFORM_STACK (from env)${NC}"
+            echo -e "Current stack: ${GREEN}$TERRAFORM_STACK${NC}"
         else
-            (>&2 echo -e "${RED}Invalid stack '$TERRAFORM_STACK' (from env). Valid stacks: $VALID_STACKS.${NC}")
+            (>&2 echo -e "${RED}Invalid stack '$TERRAFORM_STACK'.\n$TF_BIN_NAME stack select [$VALID_STACKS]${NC}")
             return 1
         fi
-    elif [ -e $STACK_FILE ]; then
-        STACK=`cat $STACK_FILE`
-        if contains "$VALID_STACKS" $STACK
-        then
-            export TERRAFORM_STACK=$STACK
-            echo -e "${GREEN}Current stack: $TERRAFORM_STACK${NC}"
+        return 0
+    }
 
-            stack_global=$DIR/stacks/$TERRAFORM_STACK/global.symlink.tf
-            stack_backend=$DIR/stacks/$TERRAFORM_STACK/backend.symlink.tf
-            if [ -f $stack_global ]; then
-                rm $stack_global
-            fi
-
-            if [ ! -h $stack_global ]; then
-                ln -s $DIR/global.tf  $stack_global
-            fi
-
-            if [ -f $stack_backend ]; then
-                rm $stack_backend
-            fi
-
-            if [ ! -h $stack_backend ]; then
-                ln -s $DIR/backend.tf $stack_backend 
-            fi
-        else
-            (>&2 echo -e "${RED}No current stack. Use: $TF_BIN_NAME stack [stack name]${NC}")
+    # Keeping this if for automation purposes via environment variables
+    if [ -n "$TERRAFORM_STACK" ]; then
+        if (! stack_valid "env") then
+            return 1
         fi
     else
-        (>&2 echo -e "${RED}No current stack. Usage: $TF_BIN_NAME stack [$VALID_STACKS]${NC}")
-        return 1
+        context_stack
+        if (! stack_valid ".tf/.stack") then
+            return 1
+        fi
     fi
 
+
+    stack_global=$DIR/stacks/$TERRAFORM_STACK/global.symlink.tf
+    stack_backend=$DIR/stacks/$TERRAFORM_STACK/backend.symlink.tf
+    if [ -f $stack_global ]; then
+        rm $stack_global
+    fi
+
+    if [ ! -h $stack_global ]; then
+        ln -s $DIR/global.tf  $stack_global
+    fi
+    
+    if [ -f $stack_backend ]; then
+        rm $stack_backend
+    fi
+    
+    if [ ! -h $stack_backend ]; then
+        ln -s $DIR/backend.tf $stack_backend 
+    fi
     return $?
 }
 
@@ -331,13 +365,12 @@ stack_select() {
 
 ## backend
 backend() {
-    if [ ! -e $WORKSPACE_FILE ]; then
-        echo -e "${RED}Workspace file doesn't exist!${NC}"
+    if [ ${#@} -lt 1 ]; then
+        echo -e "${RED}No command has been provided for backend.\nUsual terraform commands can be used.${NC}"
+        echo -e "${YELLOW}Usage: $TF_BIN_NAME backend <terraform_command>${NC}"
         return 1
     fi
-
-    TERRAFORM_WORKSPACE=$(cat $WORKSPACE_FILE)
-    export AWS_PROFILE=$TERRAFORM_WORKSPACE
+    context_workspace
 
     echo -e "Using directory:   ${GREEN}state-management${NC}"
     echo -e "Current workspace: ${GREEN}$TERRAFORM_WORKSPACE${NC}"
@@ -363,8 +396,6 @@ backend() {
 
 ## dependencies
 dependencies() {
-    context
-
     ADD_STATUS=d
     if [ "x$1" = "xstatus" ]
     then
@@ -428,8 +459,6 @@ chamber() {
 
 ## conf
 conf() {
-    context
-
     PREFIX=$1
     shift
     COMMAND=$1
@@ -465,8 +494,6 @@ conf() {
     return $?
 }
 
-## completion
-
 ## main
 main() {
     bootstrap
@@ -475,9 +502,11 @@ main() {
     shift
     case $TF_COMMAND in
         deps)
+            context
             dependencies "$@"
             ;;
         conf)
+            context
             conf "$@"
             ;;
         chamber)
@@ -509,6 +538,9 @@ main() {
         stack)
             stack "$@"
             ;;
+        ctx)
+            context true
+            ;;
         help)
             echo -e "${YELLOW}Available $TF_BIN_NAME commands\n$TF_BIN_NAME has priority over terraform${NC}"
             echo "
@@ -516,14 +548,16 @@ main() {
   conf          Interact with S3 configuration buckets
   chamber       Run chamber commands
   init          Forcefully initialize a workspace
+  ctx           Show selected stack and workspace 
+  workspace     Wraps workspaces around 'accounts' file
   backend       Run normal terraform commands on the terraform state bucket
-  stack         Manage stacks for the selected workspace\n"
+  stack         Manage stacks for the selected workspace"
             echo -e "\n${YELLOW}Available terraform commands${NC}\n"
             terraform -help
             ;;
         *)
             (>&2 echo -e "${RED}Command '$TF_COMMAND' is not supported. Use '$TF_BIN_NAME help' for more information${NC}")
-            echo "${YELLOW}$TF_BIN_NAME is compatible with terrafom version ~>1.5. If you require a command that is above this version, please raise an issue at https://github.com/vismaosscomponents/terraform-wrapper${NC}"
+            echo -e "${YELLOW}$TF_BIN_NAME is compatible with terrafom version ~>1.5. If you require a command that is above this version, please raise an issue at https://github.com/vismaosscomponents/terraform-wrapper${NC}"
             ;;
     esac
 
