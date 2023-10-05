@@ -84,7 +84,7 @@ install_required() {
     if [ "$(which tfswitch)" == "" ]; then
         echo "tfswitch is not installed...\nInstalling latest version of tfswitch"
         curl -L https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh -o $HOME/install.sh && chmod 755 $HOME/install.sh 
-        $HOME/install.sh -b $HOME/bin && rm $HOME/bin/install.sh
+        $HOME/install.sh -b $HOME/bin && rm $HOME/install.sh
         echo "${GREEN}Tfswitch has been installed${NC}"
     elif [ "$TF_WRAPPER_DEBUG" == "true" ]; then
          echo -e "${GREEN}tfswitch is installed${NC}"
