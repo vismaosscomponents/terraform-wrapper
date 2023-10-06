@@ -282,7 +282,7 @@ workspace_select() {
             echo -e "Already on workspace ${GREEN}$TERRAFORM_WORKSPACE${NC}"
         fi
     else
-        (>&2 echo -e "${RED}workspace '$1' is invalid. Usage: $TF_BIN_NAME workspace accounts[@]}].${NC}")
+        (>&2 echo -e "${RED}workspace '$1' is invalid. Usage: $TF_BIN_NAME workspace [${!accounts[@]}].${NC}")
         return 1
     fi
     return 0
