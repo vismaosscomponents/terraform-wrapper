@@ -122,9 +122,9 @@ terraform_version_select() {
 
     #TF_VERSION_FILE needs to match the SEMVAR MAJOR.MINOR.PATCH 
     if [ -f "$TF_VERSION_FILE" ]; then
-        TF_VERSION=`cat $TF_VERSION_FILE`
+        TF_VERSION=`head -n 1 $TF_VERSION_FILE`
     elif [ -f "$TF_VERSION_FILE_ROOT" ]; then
-        TF_VERSION=`cat $TF_VERSION_FILE_ROOT`
+        TF_VERSION=`head -n 1 $TF_VERSION_FILE_ROOT`
     else
         (>&2 echo -e "${RED}No version of terraform has been specified. Create first a terraform.version file with a proper semver${NC}")
         exit 1
