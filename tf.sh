@@ -39,7 +39,6 @@ context_stack() {
 
 context_workspace() {
     if [ -n "$TERRAFORM_WORKSPACE" ]; then
-        export AWS_PROFILE=$TERRAFORM_WORKSPACE
         return 0
     fi
 
