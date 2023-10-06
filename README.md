@@ -86,9 +86,11 @@ Select a workspace:
 
     tf workspace select acc
 
+* creating workspace requires write permissions because the buckets are encrypted with KMS keys
+
 Login with PUM:
 
-    Run pum-aws to get the credentials
+    Run pum-aws retrieve the credentials
 
 Do some stuff:
 
