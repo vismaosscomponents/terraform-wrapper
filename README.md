@@ -2,11 +2,10 @@ Inspired by https://stackoverflow.com/a/45968410
 
 # Installing
 
-## Terraform
-Install terraform, make sure ``terraform-0.11`` is on the path
-
 ## Main script
 Copy ``tf.sh somewhere``, ``/usr/local/bin/tf`` for instance.
+
+Terraform in installed based on the `terraform.version` file, via tfswitch.
 
 ## Bash prompt
 Copy ``tf-prompt.sh`` somewhere, source it from your bash profile. 
@@ -81,20 +80,22 @@ Execute the script from a directory inside a root (i.e. one of the parent direct
 
 Select a stack:
     
-    tf stack network
+    tf stack select network
     
 Select a workspace:
 
-    tf workspace acc
-    
+    tf workspace select acc
+
 Login with PUM:
 
-    tf login
+    Run pum-aws to get the credentials
 
 Do some stuff:
 
     tf plan
     tf apply
+
+Use `tf help` to see supported tf (custom and terraform) commands.
 
 ``global.tf``, ``global.tfvars`` and ``envvars/<workspace>.tfvars`` are automatically used when running:    
 * ``apply`` 
@@ -120,9 +121,12 @@ How to create the backend:
 
 ## Subsequent modifications
 Switching between workspaces:
-* run `tf.sh workspace <workspace>`
+* run `tf.sh workspace select <workspace>`
 * run `tf.sh backend init`
 
+## Check current context (stack/workspace)
+
+* tf ctx
 
 # Dependency graph
 
@@ -140,7 +144,7 @@ See examples: [dependency graph 1](deps-status-1.png), [dependency graph 2](deps
 The wrapper expects an executable named ``terraform-0.11`` to be on the path.
 You can use version 0.12 or 0.14 in this way:
 * create a file named ``terraform.version`` on the root of your repo, or in a stack to use that version for a single stack
-* file should contain ``0.12`` or ``0.14`` to select the version
+* file should contain ``0.12.0`` or ``0.14.0`` to select the version
 
 # Extra credentials
 
@@ -162,8 +166,10 @@ This file should be excluded from source control. It will be loaded during ``pla
 1. Bash autocompletion
 1. Initialize a project.
 1. Use symlinks if supported instead of copying ``global.tf`` as ``global.symlink.tf``
-1. ? Find current stack from current directory, to be able to use ``cd stacks/xxx`` instead of ``tf stack xxx``
+1. ? Find current stack from current directory, to be able to use ``cd stacks/xxx`` instead of ``tf stack select xxx``
 
 # Limitations
 
 * the workspace is tied with the AWS account. Can't have multiple workspaces under the same AWS account
+* terraform.version file is required in the root directory or at the stack level
+** the contents of the version needs to exactly match (e.g. 1.5.7)
