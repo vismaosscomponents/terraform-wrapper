@@ -1,6 +1,10 @@
-Inspired by https://stackoverflow.com/a/45968410
+# Archive Notice
+
+This repository has been archived in favor of https://github.com/Visma-Approval/terraform-wrapper.
 
 # Installing
+
+Inspired by https://stackoverflow.com/a/45968410
 
 ## Main script
 Copy ``tf.sh somewhere``, ``/usr/local/bin/tf`` for instance.
